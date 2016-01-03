@@ -14,6 +14,7 @@ __all__ = [
     "count_params",
     "get_all_param_values",
     "set_all_param_values",
+    "find_layers"
 ]
 
 
@@ -471,7 +472,7 @@ def set_all_param_values(layer, values, **tags):
         else:
             p.set_value(v)
 
-def find_layers(layer, names, types=None):
+def find_layers(layer, names=None, types=None):
     ''' Given a output layer, the function traverse all connected layers
     to find a list of layer that satisfied 2 conditions:
         * Layer's name is in names arguments
@@ -490,6 +491,9 @@ def find_layers(layer, names, types=None):
         list of found layer
 
     '''
+    if names is None and types is None:
+        raise ValueError('One of [names] or [types] conditions must be specified')
+
     if isinstance(names, str):
         names = [names]
     if not hasattr(types, '__len__'):
@@ -497,9 +501,15 @@ def find_layers(layer, names, types=None):
 
     all_layers = get_all_layers(layer)
     found = []
-    for n in names:
+
+    if names is not None:
+        for n in names:
+            for l in all_layers:
+                if l.name == n:
+                    if types is None or type(l) in types:
+                        found.append(l)
+    else:
         for l in all_layers:
-            if l.name == n:
-                if types is None or type(l) in types:
-                    found.append(l)
+            if type(l) in types:
+                found.append(l)
     return found
