@@ -494,21 +494,22 @@ def find_layers(layer, names=None, types=None):
     if names is None and types is None:
         raise ValueError('One of [names] or [types] conditions must be specified')
 
-    if isinstance(names, str):
-        names = [names]
-    if not hasattr(types, '__len__'):
-        types = [types]
-
     all_layers = get_all_layers(layer)
     found = []
 
     if names is not None:
+        if isinstance(names, str) or not hasattr(types, '__len__'):
+            names = [names]
+
         for n in names:
             for l in all_layers:
                 if l.name == n:
                     if types is None or type(l) in types:
                         found.append(l)
     else:
+        if not hasattr(types, '__len__'):
+            types = [types]
+
         for l in all_layers:
             if type(l) in types:
                 found.append(l)
