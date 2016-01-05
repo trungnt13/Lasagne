@@ -477,6 +477,7 @@ def find_layers(layer, names=None, types=None):
     to find a list of layer that satisfied 2 conditions:
         * Layer's name is in names arguments
         * Layer's type is in types arguments
+    Order of output is preserved as input
 
     Parameters
     ----------
@@ -491,18 +492,19 @@ def find_layers(layer, names=None, types=None):
         list of found layer
 
     '''
+    # check arguments
     if names is None and types is None:
         raise ValueError('One of [names] or [types] conditions must be specified')
-
+    if type is not None and not hasattr(types, '__len__'):
+        types = [types]
+    # init
     all_layers = get_all_layers(layer)
     found = []
-
-    if isinstance(names, str) or not hasattr(types, '__len__'):
-        names = [names]
-    if not hasattr(types, '__len__'):
-        types = [types]
-
+    # logic
     if names is not None:
+        if isinstance(names, str) or not hasattr(types, '__len__'):
+            names = [names]
+
         for n in names:
             for l in all_layers:
                 if l.name in n:
