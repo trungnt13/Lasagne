@@ -730,6 +730,14 @@ def norm_constraint(tensor_var, max_norm, norm_axes=None, epsilon=1e-7):
         )
 
     dtype = np.dtype(theano.config.floatX).type
+    if hasattr(max_norm, 'astype'):
+        max_norm = max_norm.astype(theano.config.floatX)
+    else:
+        max_norm = dtype(max_norm)
+    if hasattr(epsilon, 'astype'):
+        epsilon = epsilon.astype(theano.config.floatX)
+    else:
+        epsilon = dtype(epsilon)
     norms = T.sqrt(T.sum(T.sqr(tensor_var), axis=sum_over, keepdims=True))
     target_norms = T.clip(norms, 0, dtype(max_norm))
     constrained_output = \
@@ -794,10 +802,18 @@ def total_norm_constraint(tensor_vars, max_norm, epsilon=1e-7,
        learning with neural networks. In Advances in Neural Information
        Processing Systems (pp. 3104-3112).
     """
-    norm = T.sqrt(sum(T.sum(tensor**2) for tensor in tensor_vars))
     dtype = np.dtype(theano.config.floatX).type
-    target_norm = T.clip(norm, 0, dtype(max_norm))
-    multiplier = target_norm / (dtype(epsilon) + norm)
+    if hasattr(max_norm, 'astype'):
+        max_norm = max_norm.astype(theano.config.floatX)
+    else:
+        max_norm = dtype(max_norm)
+    if hasattr(epsilon, 'astype'):
+        epsilon = epsilon.astype(theano.config.floatX)
+    else:
+        epsilon = dtype(epsilon)
+    norm = T.sqrt(sum(T.sum(tensor**2) for tensor in tensor_vars))
+    target_norm = T.clip(norm, 0, max_norm)
+    multiplier = target_norm / (epsilon + norm)
     tensor_vars_scaled = [step*multiplier for step in tensor_vars]
 
     if return_norm:
