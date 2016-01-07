@@ -481,34 +481,49 @@ def find_layers(layer, names=None, types=None):
 
     Parameters
     ----------
-    names : str | list
-        str or list of str specifies name condition
-    types : type | list
-        type or list of type specifies type condition
+    names : str | list(str)
+        any layer's name contains [1 element of names] will be returned
+    types : type | list(str)
+        type or list of all acceptable types (None = accept all type)
 
     Returns
     -------
     return : list
-        list of found layer
+        list of found layer (no duplicated)
 
+    Examples
+    --------
+    >>> from lasagne.layers import InputLayer, DenseLayer, ElemwiseSumLayer, find_layers
+    >>> l_in = InputLayer((100, 20), name='input')
+    >>> l_mask = InputLayer((100, 20), name='mask')
+    >>> l1 = DenseLayer(l_in, num_units=50, name=['pretrain','l1'])
+    >>> l2 = DenseLayer(l_mask, num_units=50, name=['pretrain','l2'])
+    >>> l_merge = ElemwiseSumLayer((l1,l2), name='pretrain')
+    >>> l_out = DenseLayer(l_merge, 10)
+    >>> find_layers(l_out, ['input','mask','pretrain'])
+    >>> # return: [l_in, l_mask, l1, l2, l_mer]
+    >>> find_layers(l_out, ['input','mask','pretrain'], types=[InputLayer, DenseLayer])
+    >>> # return: [l_in, l_mask, l1, l2]
     '''
+    list_types = (tuple, list)
     # check arguments
     if names is None and types is None:
         raise ValueError('One of [names] or [types] conditions must be specified')
-    if types is not None and not hasattr(types, '__len__'):
+    if types is not None and type(types) not in list_types:
         types = [types]
     # init
     all_layers = get_all_layers(layer)
     found = []
-
     # logic
     if names is not None:
-        if isinstance(names, str) or not hasattr(types, '__len__'):
+        if type(names) not in list_types:
             names = [names]
 
         for n in names:
             for l in all_layers:
-                if l.name in n:
+                check = (l.name == n) if type(l.name) not in list_types else \
+                    sum([i == n for i in l.name])
+                if check and l not in found: # no duplicate
                     if types is None or type(l) in types:
                         found.append(l)
     else:
