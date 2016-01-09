@@ -9,8 +9,8 @@ from .dense import DenseLayer
 from .noise import DropoutLayer, GaussianNoiseLayer
 from .normalization import batch_norm
 from .shape import ReshapeLayer, PadLayer
-from .merge import ElemwiseSumLayer
 from .special import NonlinearityLayer
+from .merge import ElemwiseSumLayer, ShortcutLayer
 
 __all__ = [
     "residual_dense",
@@ -20,7 +20,7 @@ __all__ = [
 def residual_dense(incoming, num_units,
             W=init.GlorotUniform(), b=init.Constant(0.),
             nonlinearity=nonlinearities.rectify,
-            noise=0., dropout=0., rescale=True,
+            noise=None, dropout=None, rescale=True,
             batch_normalization=True, **kwargs):
     '''
     Create set of fully connected Residual layers.
@@ -82,7 +82,7 @@ def residual_dense(incoming, num_units,
 
     # create intermediate layer
     l = incoming
-    for i in num_units[-1]:
+    for i in num_units[:-1]:
         l = DenseLayer(l, num_units=i, W=W, b=b, nonlinearity=nonlinearity, **kwargs)
         if batch_normalization:
             l = batch_norm(l)
@@ -92,30 +92,9 @@ def residual_dense(incoming, num_units,
             l = DropoutLayer(l, p=dropout, rescale=rescale)
 
     # create output layer
-    l = DenseLayer(l, num_units=int(np.prod(incoming.output_shape[1:])),
-        W=W, b=b, nonlinearity=nonlinearity, **kwargs)
-    l = ReshapeLayer(l, shape=([0],) + incoming.output_shape[1:])
-    if batch_normalization:
-        l = batch_norm(l)
-    l = ElemwiseSumLayer((l, incoming))
-    return l
-
-
-def residual_block(layer, num_filters, filter_size=3, stride=1, num_layers=2):
-    try:
-        from .dnn import Conv2DDNNLayer as Conv2DLayer
-    except:
-        from .conv import Conv2DLayer
-
-    conv = layer
-    if (num_filters != layer.output_shape[1]) or (stride != 1):
-        layer = Conv2DLayer(layer, num_filters, filter_size=1, stride=stride, pad=0, nonlinearity=None, b=None)
-    for _ in range(num_layers):
-        conv = Conv2DLayer(conv, num_filters, filter_size, stride=stride, pad='same')
-        stride = 1
-    nonlinearity = conv.nonlinearity
-    conv.nonlinearity = nonlinearities.identity
-    return NonlinearityLayer(ElemwiseSumLayer([conv, layer]), nonlinearity)
+    l = DenseLayer(l, num_units=num_units[-1], W=W, b=b, nonlinearity=None, **kwargs)
+    l = batch_norm(l)
+    return NonlinearityLayer(ShortcutLayer((l, incoming)), nonlinearity=nonlinearity)
 
 def residual_conv2d(l, increase_dim=False, projection=False):
     ''' Add a set of convoluation 2D layer and make residual layer on
