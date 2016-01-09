@@ -1,6 +1,9 @@
+import numpy as np
+
 import theano.tensor as T
 
 from .base import MergeLayer
+from .. import init, nonlinearities
 
 
 __all__ = [
@@ -10,6 +13,7 @@ __all__ = [
     "concat",
     "ElemwiseMergeLayer",
     "ElemwiseSumLayer",
+    "ShortcutLayer"
 ]
 
 
@@ -104,8 +108,8 @@ def autocrop(inputs, cropping):
             raise ValueError("Not all inputs are of the same "
                              "dimensionality. Got {0} inputs of "
                              "dimensionalities {1}.".format(
-                                len(inputs),
-                                [input.ndim for input in inputs]))
+                                 len(inputs),
+                                 [input.ndim for input in inputs]))
         # Get the shape of each input, where each shape will be a Theano
         # expression
         shapes = [input.shape for input in inputs]
@@ -123,7 +127,7 @@ def autocrop(inputs, cropping):
         cropping = list(cropping)
         if ndim > len(cropping):
             cropping = list(cropping) + \
-                         [None] * (ndim - len(cropping))
+                [None] * (ndim - len(cropping))
 
         # For each dimension
         for dim, cr in enumerate(cropping):
@@ -150,7 +154,7 @@ def autocrop(inputs, cropping):
                     # Choose `sz` elements from the center
                     for sh, slices in zip(shapes, slices_by_input):
                         offset = (sh[dim] - sz) // 2
-                        slices.append(slice(offset, offset+sz))
+                        slices.append(slice(offset, offset + sz))
                 else:
                     raise ValueError(
                         'Unknown crop mode \'{0}\''.format(cr))
@@ -217,8 +221,8 @@ def autocrop_array_shapes(input_shapes, cropping):
             raise ValueError("Not all inputs are of the same "
                              "dimensionality. Got {0} inputs of "
                              "dimensionalities {1}.".format(
-                                len(input_shapes),
-                                [len(sh) for sh in input_shapes]))
+                                 len(input_shapes),
+                                 [len(sh) for sh in input_shapes]))
 
         result = []
 
@@ -227,7 +231,7 @@ def autocrop_array_shapes(input_shapes, cropping):
         cropping = list(cropping)
         if ndim > len(cropping):
             cropping = list(cropping) + \
-                         [None] * (ndim - len(cropping))
+                [None] * (ndim - len(cropping))
 
         for sh, cr in zip(zip(*input_shapes), cropping):
             if cr is None:
@@ -240,6 +244,7 @@ def autocrop_array_shapes(input_shapes, cropping):
 
 
 class ConcatLayer(MergeLayer):
+
     """
     Concatenates multiple inputs along the specified axis. Inputs should have
     the same shape except for the dimension specified in axis, which can have
@@ -257,6 +262,7 @@ class ConcatLayer(MergeLayer):
         Cropping for each input axis. Cropping is described in the docstring
         for :func:`autocrop`. Cropping is always disabled for `axis`.
     """
+
     def __init__(self, incomings, axis=1, cropping=None, **kwargs):
         super(ConcatLayer, self).__init__(incomings, **kwargs)
         self.axis = axis
@@ -296,6 +302,7 @@ concat = ConcatLayer  # shortcut
 
 
 class ElemwiseMergeLayer(MergeLayer):
+
     """
     This layer performs an elementwise merge of its input layers.
     It requires all input layers to have the same output shape.
@@ -354,6 +361,7 @@ class ElemwiseMergeLayer(MergeLayer):
 
 
 class ElemwiseSumLayer(ElemwiseMergeLayer):
+
     """
     This layer performs an elementwise sum of its input layers.
     It requires all input layers to have the same output shape.
@@ -381,6 +389,7 @@ class ElemwiseSumLayer(ElemwiseMergeLayer):
     of the same number of output units and add them up afterwards. (This avoids
     the copy operations in concatenation, but splits up the dot product.)
     """
+
     def __init__(self, incomings, coeffs=1, cropping=None, **kwargs):
         super(ElemwiseSumLayer, self).__init__(incomings, T.add,
                                                cropping=cropping, **kwargs)
@@ -400,3 +409,92 @@ class ElemwiseSumLayer(ElemwiseMergeLayer):
 
         # pass scaled inputs to the super class for summing
         return super(ElemwiseSumLayer, self).get_output_for(inputs, **kwargs)
+
+class ShortcutLayer(MergeLayer):
+
+    """
+    Create shortcut tunnel for information flow by using simple combination of
+    previous inputs:
+     - With projection:
+        y = F(x1) + W(2) * x2 + W(3) * x3 + ....
+     - Without projection:
+        y = F(x1) + x2 + x3 + ....
+
+    Parameters
+    ----------
+    incomings : a list of :class:`Layer` instances or tuples
+        the layers feeding into this layer, the first layer known as
+        root and all other layers will be projected into that layer's output
+
+    force_projection : bool
+        whether projection will be used for all shortcut
+
+    W : Theano shared variable, expression, numpy array or callable
+        Initial value, expression or initializer for the projection weights.
+        These should be a matrix with shape ``(num_inputs, num_units)``.
+        See :func:`lasagne.utils.create_param` for more information.
+
+    nonlinearity : callable or None
+        The nonlinearity that is applied to each shortcut. If None
+        is provided, the layer will be linear.
+
+    Example
+    -------
+    >>> ####### Highway network
+    >>> from lasagne.layers import DenseLayer, InputLayer, ShortcutLayer
+    >>> l_in = InputLayer(shape=(None, 1, 28, 28))
+    >>> # project to 512-dim
+    >>> l_in = DenseLayer(l_in, num_units=512)
+    >>> # hidden layer
+    >>> l_h = DenseLayer(l_in, num_units=512)
+    >>> # gate layer
+    >>> l_t = DenseLayer(incoming, num_units=512,
+    >>>                  nonlinearity=T.nnet.sigmoid)
+    >>> # (1 - T)
+    >>> l_t_ = ExpressionLayer(l_t, lambda x: 1-x)
+    >>> l = ShortcutLayer(
+    >>>         ElemwiseMergeLayer((l_t,l_h),merge_function=T.mul),
+    >>>         ElemwiseMergeLayer((l_t_,l_in),merge_function=T.mul)
+    >>> )
+
+    Notes
+    -----
+    Output_shape is the shape of first element in incomings array.
+    If shortcut is reshape-able to fit the root's shape, not projection is
+    performed.
+    """
+
+    def __init__(self, incomings, force_projection=False,
+        W=init.GlorotUniform(), nonlinearity=nonlinearities.identity,
+        **kwargs):
+        super(ShortcutLayer, self).__init__(incomings, **kwargs)
+        self.nonlinearity = (nonlinearities.identity if nonlinearity is None
+                             else nonlinearity)
+        self.W = []
+
+        root = incomings[0]
+        root_outdim = int(np.prod(root.output_shape[1:]))
+        # create projection if necessary
+        for l in incomings[1:]:
+            shortcut_outdim = int(np.prod(l.output_shape[1:]))
+            if root_outdim != shortcut_outdim or force_projection:
+                self.W.append(self.add_param(W, (shortcut_outdim, root_outdim), name="W"))
+            else:
+                self.W.append(None)
+
+    def get_output_shape_for(self, input_shapes):
+        return input_shapes[0]
+
+    def get_output_for(self, inputs, **kwargs):
+        activation = inputs[0]
+        ndim = activation.ndim
+        for W, x in zip(self.W, inputs[1:]):
+            if W is not None: # projection
+                if x.ndim > 2: # flatten > 2D input
+                    x = x.flatten(2)
+                x = T.dot(x, W)
+            x = self.nonlinearity(x)
+            if ndim > 2: # reshape for > 2D
+                x = x.reshape(activation.shape)
+            activation += x
+        return activation

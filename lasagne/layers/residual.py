@@ -82,7 +82,7 @@ def residual_dense(incoming, num_units,
 
     # create intermediate layer
     l = incoming
-    for i in num_units:
+    for i in num_units[-1]:
         l = DenseLayer(l, num_units=i, W=W, b=b, nonlinearity=nonlinearity, **kwargs)
         if batch_normalization:
             l = batch_norm(l)
@@ -95,9 +95,9 @@ def residual_dense(incoming, num_units,
     l = DenseLayer(l, num_units=int(np.prod(incoming.output_shape[1:])),
         W=W, b=b, nonlinearity=nonlinearity, **kwargs)
     l = ReshapeLayer(l, shape=([0],) + incoming.output_shape[1:])
-    l = ElemwiseSumLayer((l, incoming))
     if batch_normalization:
         l = batch_norm(l)
+    l = ElemwiseSumLayer((l, incoming))
     return l
 
 
@@ -118,6 +118,33 @@ def residual_block(layer, num_filters, filter_size=3, stride=1, num_layers=2):
     return NonlinearityLayer(ElemwiseSumLayer([conv, layer]), nonlinearity)
 
 def residual_conv2d(l, increase_dim=False, projection=False):
+    ''' Add a set of convoluation 2D layer and make residual layer on
+    top of them.
+
+    Parameters
+    ----------
+    l : lasagne.layer.Layer
+        input layer
+    increase_dim : bool
+        pass
+    projection : bool
+        Option (B) in paper, y = F(x,W{i}) + W{j}*x
+
+    Returns
+    -------
+    return : lasagne.layer.Layer
+        output layer
+
+    Reference
+    ---------
+    Deep Residual Learning for Image Recognition
+    (http://arxiv.org/abs/1512.03385)
+
+    Notes
+    -----
+    Batch Norm is performed on output layer before ElemwiseSum with shortcut
+    connection.
+    '''
     try:
         from .dnn import Conv2DDNNLayer as Conv2DLayer
         from .dnn import Pool2DDNNLayer as Pool2DLayer
