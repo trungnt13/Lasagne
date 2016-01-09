@@ -23,6 +23,7 @@ __all__ = [
 
 
 class NonlinearityLayer(Layer):
+
     """
     lasagne.layers.NonlinearityLayer(incoming,
     nonlinearity=lasagne.nonlinearities.rectify, **kwargs)
@@ -38,6 +39,7 @@ class NonlinearityLayer(Layer):
         The nonlinearity that is applied to the layer activations. If None
         is provided, the layer will be linear.
     """
+
     def __init__(self, incoming, nonlinearity=nonlinearities.rectify,
                  **kwargs):
         super(NonlinearityLayer, self).__init__(incoming, **kwargs)
@@ -49,6 +51,7 @@ class NonlinearityLayer(Layer):
 
 
 class BiasLayer(Layer):
+
     """
     lasagne.layers.BiasLayer(incoming, b=lasagne.init.Constant(0),
     shared_axes='auto', **kwargs)
@@ -83,6 +86,7 @@ class BiasLayer(Layer):
     >>> layer.b.get_value().shape
     (30, 50)
     """
+
     def __init__(self, incoming, b=init.Constant(0), shared_axes='auto',
                  **kwargs):
         super(BiasLayer, self).__init__(incoming, **kwargs)
@@ -117,6 +121,7 @@ class BiasLayer(Layer):
 
 
 class ExpressionLayer(Layer):
+
     """
     This layer provides boilerplate for a custom layer that applies a
     simple transformation to the input.
@@ -151,6 +156,7 @@ class ExpressionLayer(Layer):
     >>> l1.output_shape
     (32, 100)
     """
+
     def __init__(self, incoming, function, output_shape=None, **kwargs):
         super(ExpressionLayer, self).__init__(incoming, **kwargs)
 
@@ -182,6 +188,7 @@ class ExpressionLayer(Layer):
 
 
 class InverseLayer(MergeLayer):
+
     """
     The :class:`InverseLayer` class performs inverse operations
     for a single layer of a neural network by applying the
@@ -216,6 +223,7 @@ class InverseLayer(MergeLayer):
     >>> l2 = DenseLayer(l1, num_units=20)
     >>> l_u = InverseLayer(l2, l1)  # As Deconv2DLayer
     """
+
     def __init__(self, incoming, layer, **kwargs):
 
         super(InverseLayer, self).__init__(
@@ -230,6 +238,7 @@ class InverseLayer(MergeLayer):
 
 
 class TransformerLayer(MergeLayer):
+
     """
     Spatial transformer layer
 
@@ -281,6 +290,7 @@ class TransformerLayer(MergeLayer):
     ... nonlinearity=None)
     >>> l_trans = lasagne.layers.TransformerLayer(l_in, l_loc)
     """
+
     def __init__(self, incoming, localization_network, downsample_factor=1,
                  **kwargs):
         super(TransformerLayer, self).__init__(
@@ -367,11 +377,11 @@ def _interpolate(im, x, y, out_height, out_width):
     # the flattened input, i.e [num_batch*height*width, channels]. We need
     # to offset all indices to match the flat version
     dim2 = width
-    dim1 = width*height
+    dim1 = width * height
     base = T.repeat(
-        T.arange(num_batch, dtype='int64')*dim1, out_height*out_width)
-    base_y0 = base + y0*dim2
-    base_y1 = base + y1*dim2
+        T.arange(num_batch, dtype='int64') * dim1, out_height * out_width)
+    base_y0 = base + y0 * dim2
+    base_y1 = base + y1 * dim2
     idx_a = base_y0 + x0
     idx_b = base_y1 + x0
     idx_c = base_y0 + x1
@@ -385,11 +395,11 @@ def _interpolate(im, x, y, out_height, out_width):
     Id = im_flat[idx_d]
 
     # calculate interpolated values
-    wa = ((x1_f-x) * (y1_f-y)).dimshuffle(0, 'x')
-    wb = ((x1_f-x) * (y-y0_f)).dimshuffle(0, 'x')
-    wc = ((x-x0_f) * (y1_f-y)).dimshuffle(0, 'x')
-    wd = ((x-x0_f) * (y-y0_f)).dimshuffle(0, 'x')
-    output = T.sum([wa*Ia, wb*Ib, wc*Ic, wd*Id], axis=0)
+    wa = ((x1_f - x) * (y1_f - y)).dimshuffle(0, 'x')
+    wb = ((x1_f - x) * (y - y0_f)).dimshuffle(0, 'x')
+    wc = ((x - x0_f) * (y1_f - y)).dimshuffle(0, 'x')
+    wd = ((x - x0_f) * (y - y0_f)).dimshuffle(0, 'x')
+    output = T.sum([wa * Ia, wb * Ib, wc * Ic, wd * Id], axis=0)
     return output
 
 
@@ -398,8 +408,8 @@ def _linspace(start, stop, num):
     start = T.cast(start, theano.config.floatX)
     stop = T.cast(stop, theano.config.floatX)
     num = T.cast(num, theano.config.floatX)
-    step = (stop-start)/(num-1)
-    return T.arange(num, dtype=theano.config.floatX)*step+start
+    step = (stop - start) / (num - 1)
+    return T.arange(num, dtype=theano.config.floatX) * step + start
 
 
 def _meshgrid(height, width):
@@ -426,6 +436,7 @@ def _meshgrid(height, width):
 
 
 class ParametricRectifierLayer(Layer):
+
     """
     lasagne.layers.ParametricRectifierLayer(incoming,
     alpha=init.Constant(0.25), shared_axes='auto', **kwargs)
@@ -475,6 +486,7 @@ class ParametricRectifierLayer(Layer):
     >>> layer.alpha.get_value().shape
     (3, 28)
     """
+
     def __init__(self, incoming, alpha=init.Constant(0.25), shared_axes='auto',
                  **kwargs):
         super(ParametricRectifierLayer, self).__init__(incoming, **kwargs)
@@ -537,6 +549,7 @@ def prelu(layer, **kwargs):
 
 
 class RandomizedRectifierLayer(Layer):
+
     """
     A layer that applies a randomized leaky rectify nonlinearity to its input.
 
@@ -579,6 +592,7 @@ class RandomizedRectifierLayer(Layer):
        Empirical Evaluation of Rectified Activations in Convolutional Network,
        http://arxiv.org/abs/1505.00853
     """
+
     def __init__(self, incoming, lower=0.3, upper=0.8, shared_axes='auto',
                  **kwargs):
         super(RandomizedRectifierLayer, self).__init__(incoming, **kwargs)
@@ -610,7 +624,7 @@ class RandomizedRectifierLayer(Layer):
             leaky slope.
         """
         if deterministic or self.upper == self.lower:
-            return theano.tensor.nnet.relu(input, (self.upper+self.lower)/2.0)
+            return theano.tensor.nnet.relu(input, (self.upper + self.lower) / 2.0)
         else:
             shape = list(self.input_shape)
             if any(s is None for s in shape):
@@ -656,3 +670,47 @@ def rrelu(layer, **kwargs):
     if nonlinearity is not None:
         layer.nonlinearity = nonlinearities.identity
     return RandomizedRectifierLayer(layer, **kwargs)
+
+class Antirectifier(Layer):
+
+    """
+    This is the combination of a sample-wise L2 normalization with the
+    concatenation of:
+        - the positive part of the input
+        - the negative part of the input
+    The result is a tensor of samples that are twice as large as
+    the input samples.
+    It can be used in place of a ReLU.
+        - Input shape: 2D tensor of shape (samples, n)
+        - Output shape: 2D tensor of shape (samples, 2*n)
+
+    Parameters
+    ----------
+
+    Notes
+    -----
+    When applying ReLU, assuming that the distribution of the previous
+    output is approximately centered around 0., you are discarding half of
+    your input. This is inefficient.
+    Antirectifier allows to return all-positive outputs like ReLU, without
+    discarding any data.
+    Tests on MNIST show that Antirectifier allows to train networks with
+    twice less parameters yet with comparable classification accuracy
+    as an equivalent ReLU-based network.
+
+    """
+
+    def get_output_shape_for(self, input_shapes):
+        if len(input_shapes) != 2:
+            raise ValueError('Antirectifier only support 2D input')
+        return (input_shapes[0], input_shapes[-1] * 2)
+
+    def get_output_for(self, input, **kwargs):
+        input -= T.mean(input, axis=1, keepdims=True)
+        # l2 normalization
+        norm = T.sqrt(T.sum(T.square(input), axis=1, keepdims=True))
+        input /= norm
+
+        pos = T.nnet.relu(input, 0)
+        neg = T.nnet.relu(-input, 0)
+        return T.concatenate([pos, neg], axis=1)

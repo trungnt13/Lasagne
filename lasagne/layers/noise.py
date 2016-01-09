@@ -1,3 +1,5 @@
+import numpy as np
+
 import theano
 
 from .base import Layer
@@ -14,6 +16,7 @@ __all__ = [
 
 
 class DropoutLayer(Layer):
+
     """Dropout layer
 
     Sets values to zero with probability p. See notes for disabling dropout
@@ -52,9 +55,14 @@ class DropoutLayer(Layer):
            Dropout: A Simple Way to Prevent Neural Networks from Overfitting.
            Journal of Machine Learning Research, 5(Jun)(2), 1929-1958.
     """
+
     def __init__(self, incoming, p=0.5, rescale=True, **kwargs):
         super(DropoutLayer, self).__init__(incoming, **kwargs)
         self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+        if p is not None:
+            if 'SharedVariable' not in str(type(p)):
+                p = theano.shared(p, name='p')
+            p = p.astype(theano.config.floatX)
         self.p = p
         self.rescale = rescale
 
@@ -67,7 +75,7 @@ class DropoutLayer(Layer):
         deterministic : bool
             If true dropout and scaling is disabled, see notes
         """
-        if deterministic or self.p == 0:
+        if deterministic or self.p is None:
             return input
         else:
             retain_prob = 1 - self.p
@@ -86,6 +94,7 @@ dropout = DropoutLayer  # shortcut
 
 
 class GaussianNoiseLayer(Layer):
+
     """Gaussian noise layer.
 
     Add zero-mean Gaussian noise of given standard deviation to the input [1]_.
@@ -110,9 +119,14 @@ class GaussianNoiseLayer(Layer):
            generalization.
            IEEE Transactions on Neural Networks, 7(6):1424-1438.
     """
+
     def __init__(self, incoming, sigma=0.1, **kwargs):
         super(GaussianNoiseLayer, self).__init__(incoming, **kwargs)
         self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+        if sigma is not None:
+            if 'SharedVariable' not in str(type(sigma)):
+                sigma = theano.shared(sigma, name='p')
+            sigma = sigma.astype(theano.config.floatX)
         self.sigma = sigma
 
     def get_output_for(self, input, deterministic=False, **kwargs):
@@ -124,7 +138,7 @@ class GaussianNoiseLayer(Layer):
         deterministic : bool
             If true noise is disabled, see notes
         """
-        if deterministic or self.sigma == 0:
+        if deterministic or self.sigma is not None:
             return input
         else:
             return input + self._srng.normal(input.shape,
