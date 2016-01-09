@@ -472,7 +472,7 @@ def set_all_param_values(layer, values, **tags):
         else:
             p.set_value(v)
 
-def find_layers(layer, names=None, types=None):
+def find_layers(layer, name=None, types=None):
     ''' Given a output layer, the function traverse all connected layers
     to find a list of layer that satisfied 2 conditions:
         * Layer's name is in names arguments
@@ -481,9 +481,9 @@ def find_layers(layer, names=None, types=None):
 
     Parameters
     ----------
-    names : str | list(str)
-        any layer's name contains [1 element of names] will be returned
-    types : type | list(str)
+    names : str
+        find all layers with extractly same name as given
+    types : type | list(type)
         type or list of all acceptable types (None = accept all type)
 
     Returns
@@ -507,7 +507,7 @@ def find_layers(layer, names=None, types=None):
     '''
     list_types = (tuple, list)
     # check arguments
-    if names is None and types is None:
+    if name is None and types is None:
         raise ValueError('One of [names] or [types] conditions must be specified')
     if types is not None and type(types) not in list_types:
         types = [types]
@@ -515,17 +515,13 @@ def find_layers(layer, names=None, types=None):
     all_layers = get_all_layers(layer)
     found = []
     # logic
-    if names is not None:
-        if type(names) not in list_types:
-            names = [names]
-
-        for n in names:
-            for l in all_layers:
-                check = (l.name == n) if type(l.name) not in list_types else \
-                    sum([i == n for i in l.name])
-                if check and l not in found: # no duplicate
-                    if types is None or type(l) in types:
-                        found.append(l)
+    if name is not None:
+        for l in all_layers:
+            check = (l.name == name) if type(l.name) not in list_types else \
+                (name in l.name)
+            if check and l not in found: # no duplicate
+                if types is None or type(l) in types:
+                    found.append(l)
     else:
         for l in all_layers:
             if type(l) in types:
