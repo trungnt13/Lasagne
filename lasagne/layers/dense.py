@@ -14,6 +14,7 @@ __all__ = [
 
 
 class DenseLayer(Layer):
+
     """
     lasagne.layers.DenseLayer(incoming, num_units,
     W=lasagne.init.GlorotUniform(), b=lasagne.init.Constant(0.),
@@ -57,6 +58,7 @@ class DenseLayer(Layer):
     convolutional layer, for example. It is not necessary to insert a
     :class:`FlattenLayer` in this case.
     """
+
     def __init__(self, incoming, num_units, W=init.GlorotUniform(),
                  b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
                  **kwargs):
@@ -89,8 +91,19 @@ class DenseLayer(Layer):
             activation = activation + self.b.dimshuffle('x', 0)
         return self.nonlinearity(activation)
 
+    def get_config(self):
+        config = super(DenseLayer, self).get_config()
+        config['num_units'] = self.num_units
+        config['W'] = self.W.shape.eval().tolist()
+        if self.b is None:
+            config['b'] = 'None'
+        else:
+            config['b'] = self.b.shape.eval().tolist()
+        config['nonlinearity'] = self.nonlinearity.__name__
+        return config
 
 class NINLayer(Layer):
+
     """
     lasagne.layers.NINLayer(incoming, num_units, untie_biases=False,
     W=lasagne.init.GlorotUniform(), b=lasagne.init.Constant(0.),
@@ -144,6 +157,7 @@ class NINLayer(Layer):
     .. [1] Lin, Min, Qiang Chen, and Shuicheng Yan (2013):
            Network in network. arXiv preprint arXiv:1312.4400.
     """
+
     def __init__(self, incoming, num_units, untie_biases=False,
                  W=init.GlorotUniform(), b=init.Constant(0.),
                  nonlinearity=nonlinearities.rectify, **kwargs):
@@ -190,3 +204,15 @@ class NINLayer(Layer):
             activation = out + b_shuffled
 
         return self.nonlinearity(activation)
+
+    def get_config(self):
+        config = super(NINLayer, self).get_config()
+        config['num_units'] = self.num_units
+        config['untie_biases'] = self.untie_biases
+        config['W'] = self.W.shape.eval().tolist()
+        if self.b is None:
+            config['b'] = 'None'
+        else:
+            config['b'] = self.b.shape.eval().tolist()
+        config['nonlinearity'] = self.nonlinearity.__name__
+        return config

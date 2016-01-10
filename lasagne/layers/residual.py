@@ -93,7 +93,8 @@ def residual_dense(incoming, num_units,
 
     # create output layer
     l = DenseLayer(l, num_units=num_units[-1], W=W, b=b, nonlinearity=None, **kwargs)
-    l = batch_norm(l)
+    if batch_norm:
+        l = batch_norm(l)
     return NonlinearityLayer(ShortcutLayer((l, incoming)), nonlinearity=nonlinearity)
 
 def residual_conv2d(l, increase_dim=False, projection=False):

@@ -12,6 +12,7 @@ __all__ = [
 # Layer base class
 
 class Layer(object):
+
     """
     The :class:`Layer` class represents a single layer of a neural network. It
     should be subclassed when implementing new types of layers.
@@ -27,6 +28,7 @@ class Layer(object):
     name : a string or None
         An optional name to attach to this layer.
     """
+
     def __init__(self, incoming, name=None):
         if isinstance(incoming, tuple):
             self.input_shape = incoming
@@ -218,8 +220,21 @@ class Layer(object):
 
         return param
 
+    def get_config(self):
+        config = {'class': self.__class__.__name__}
+        if hasattr(self, 'input_shape'):
+            config['input_shape'] = self.input_shape
+        else:
+            config['input_shape'] = None
+        config['output_shape'] = self.output_shape
+        if hasattr(self, 'name'):
+            config['name'] = str(self.name)
+        else:
+            config['name'] = ''
+        return config
 
 class MergeLayer(Layer):
+
     """
     This class represents a layer that aggregates input from multiple layers.
     It should be subclassed when implementing new types of layers that obtain
@@ -232,6 +247,7 @@ class MergeLayer(Layer):
     name : a string or None
         An optional name to attach to this layer.
     """
+
     def __init__(self, incomings, name=None):
         self.input_shapes = [incoming if isinstance(incoming, tuple)
                              else incoming.output_shape
