@@ -116,7 +116,7 @@ def binary_crossentropy(predictions, targets):
     return theano.tensor.nnet.binary_crossentropy(predictions, targets)
 
 
-def categorical_crossentropy(predictions, targets):
+def categorical_crossentropy(predictions, targets, epsilon=10e-8):
     """Computes the categorical cross-entropy between predictions and targets.
 
     .. math:: L_i = - \\sum_j{t_{i,j} \\log(p_{i,j})}
@@ -129,6 +129,8 @@ def categorical_crossentropy(predictions, targets):
     targets : Theano 2D tensor or 1D tensor
         Either targets in [0, 1] matching the layout of `predictions`, or
         a vector of int giving the correct class index per data point.
+    epsilon : Theano scalar or float
+        avoid numerical instability with epsilon clipping
 
     Returns
     -------
@@ -143,6 +145,7 @@ def categorical_crossentropy(predictions, targets):
     providing a vector of int for the targets is usually slightly more
     efficient than providing a matrix with a single 1.0 per row.
     """
+    predictions = theano.tensor.clip(predictions, epsilon, 1.0 - epsilon)
     return theano.tensor.nnet.categorical_crossentropy(predictions, targets)
 
 
@@ -282,8 +285,8 @@ def multiclass_hinge_loss(predictions, targets, delta=1):
     elif targets.ndim != predictions.ndim:
         raise TypeError('rank mismatch between targets and predictions')
     corrects = predictions[targets.nonzero()]
-    rest = theano.tensor.reshape(predictions[(1-targets).nonzero()],
-                                 (-1, num_cls-1))
+    rest = theano.tensor.reshape(predictions[(1 - targets).nonzero()],
+                                 (-1, num_cls - 1))
     rest = theano.tensor.max(rest, axis=1)
     return theano.tensor.nnet.relu(rest - corrects + delta)
 

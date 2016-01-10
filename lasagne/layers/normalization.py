@@ -114,28 +114,24 @@ class BatchNormLayer(Layer):
     lasagne.layers.BatchNormLayer(incoming, axes='auto', epsilon=1e-4,
     alpha=0.1, mode='low_mem',
     beta=lasagne.init.Constant(0), gamma=lasagne.init.Constant(1),
-    mean=lasagne.init.Constant(0), var=lasagne.init.Constant(1), **kwargs)
-
+    mean=lasagne.init.Constant(0), inv_std=lasagne.init.Constant(1), **kwargs)
     Batch Normalization
-
     This layer implements batch normalization of its inputs, following [1]_:
-
     .. math::
         y = \\frac{x - \\mu}{\\sqrt{\\sigma^2 + \\epsilon}} \\gamma + \\beta
-
     That is, the input is normalized to zero mean and unit variance, and then
     linearly transformed. The crucial part is that the mean and variance are
     computed across the batch dimension, i.e., over examples, not per example.
-
     During training, :math:`\\mu` and :math:`\\sigma^2` are defined to be the
     mean and variance of the current input mini-batch :math:`x`, and during
     testing, they are replaced with average statistics over the training
     data. Consequently, this layer has four stored parameters: :math:`\\beta`,
-    :math:`\\gamma`, and the averages :math:`\\mu` and :math:`\\sigma^2`.
+    :math:`\\gamma`, and the averages :math:`\\mu` and :math:`\\sigma^2`
+    (nota bene: instead of :math:`\\sigma^2`, the layer actually stores
+    :math:`1 / \\sqrt{\\sigma^2 + \\epsilon}`, for compatibility to cuDNN).
     By default, this layer learns the average statistics as exponential moving
     averages computed during training, so it can be plugged into an existing
     network without any changes of the training procedure (see Notes).
-
     Parameters
     ----------
     incoming : a :class:`Layer` instance or a tuple
@@ -152,11 +148,6 @@ class BatchNormLayer(Layer):
         Coefficient for the exponential moving average of batch-wise means and
         standard deviations computed during training; the closer to one, the
         more it will depend on the last batches seen
-    mode : {'low_mem', 'high_mem'}
-        Specify which batch normalization implementation to use: ``'low_mem'``
-        avoids storing intermediate representations and thus requires less
-        memory, while ``'high_mem'`` can reuse representations for the backward
-        pass and is thus 5-10% faster.
     beta : Theano shared variable, expression, numpy array, callable or None
         Initial value, expression or initializer for :math:`\\beta`. Must match
         the incoming shape, skipping all axes in `axes`. Set to ``None`` to fix
@@ -171,51 +162,44 @@ class BatchNormLayer(Layer):
         Initial value, expression or initializer for :math:`\\mu`. Must match
         the incoming shape, skipping all axes in `axes`.
         See :func:`lasagne.utils.create_param` for more information.
-    var : Theano shared variable, expression, numpy array, or callable
-        Initial value, expression or initializer for :math:`\\sigma^2`. Must
-        match the incoming shape, skipping all axes in `axes`.
+    inv_std : Theano shared variable, expression, numpy array, or callable
+        Initial value, expression or initializer for :math:`1 / \\sqrt{
+        \\sigma^2 + \\epsilon}`. Must match the incoming shape, skipping all
+        axes in `axes`.
         See :func:`lasagne.utils.create_param` for more information.
     **kwargs
         Any additional keyword arguments are passed to the :class:`Layer`
         superclass.
-
     Notes
     -----
     This layer should be inserted between a linear transformation (such as a
     :class:`DenseLayer`, or :class:`Conv2DLayer`) and its nonlinearity. The
     convenience function :func:`batch_norm` modifies an existing layer to
     insert batch normalization in front of its nonlinearity.
-
     The behavior can be controlled by passing keyword arguments to
     :func:`lasagne.layers.get_output()` when building the output expression
     of any network containing this layer.
-
     During training, [1]_ normalize each input mini-batch by its statistics
     and update an exponential moving average of the statistics to be used for
     validation. This can be achieved by passing ``deterministic=False``.
     For validation, [1]_ normalize each input mini-batch by the stored
     statistics. This can be achieved by passing ``deterministic=True``.
-
     For more fine-grained control, ``batch_norm_update_averages`` can be passed
     to update the exponential moving averages (``True``) or not (``False``),
     and ``batch_norm_use_averages`` can be passed to use the exponential moving
     averages for normalization (``True``) or normalize each mini-batch by its
     own statistics (``False``). These settings override ``deterministic``.
-
     Note that for testing a model after training, [1]_ replace the stored
     exponential moving average statistics by fixing all network weights and
     re-computing average statistics over the training data in a layerwise
     fashion. This is not part of the layer implementation.
-
     In case you set `axes` to not include the batch dimension (the first axis,
     usually), normalization is done per example, not across examples. This does
     not require any averages, so you can pass ``batch_norm_update_averages``
     and ``batch_norm_use_averages`` as ``False`` in this case.
-
     See also
     --------
     batch_norm : Convenience function to apply batch normalization to a layer
-
     References
     ----------
     .. [1] Ioffe, Sergey and Szegedy, Christian (2015):
@@ -225,7 +209,7 @@ class BatchNormLayer(Layer):
 
     def __init__(self, incoming, axes='auto', epsilon=1e-4, alpha=0.1,
                  mode='low_mem', beta=init.Constant(0), gamma=init.Constant(1),
-                 mean=init.Constant(0), var=init.Constant(1), **kwargs):
+                 mean=init.Constant(0), inv_std=init.Constant(1), **kwargs):
         super(BatchNormLayer, self).__init__(incoming, **kwargs)
 
         if axes == 'auto':
@@ -257,22 +241,22 @@ class BatchNormLayer(Layer):
                                         trainable=True, regularizable=True)
         self.mean = self.add_param(mean, shape, 'mean',
                                    trainable=False, regularizable=False)
-        self.var = self.add_param(var, shape, 'var',
-                                  trainable=False, regularizable=False)
+        self.inv_std = self.add_param(inv_std, shape, 'inv_std',
+                                      trainable=False, regularizable=False)
 
     def get_output_for(self, input, deterministic=False, **kwargs):
         input_mean = input.mean(self.axes)
-        input_var = input.var(self.axes)
+        input_inv_std = T.inv(T.sqrt(input.var(self.axes) + self.epsilon))
 
         # Decide whether to use the stored averages or mini-batch statistics
         use_averages = kwargs.get('batch_norm_use_averages',
                                   deterministic)
         if use_averages:
             mean = self.mean
-            var = self.var
+            inv_std = self.inv_std
         else:
             mean = input_mean
-            var = input_var
+            inv_std = input_inv_std
 
         # Decide whether to update the stored averages
         update_averages = kwargs.get('batch_norm_update_averages',
@@ -281,17 +265,18 @@ class BatchNormLayer(Layer):
             # Trick: To update the stored statistics, we create memory-aliased
             # clones of the stored statistics:
             running_mean = theano.clone(self.mean, share_inputs=False)
-            running_var = theano.clone(self.var, share_inputs=False)
+            running_inv_std = theano.clone(self.inv_std, share_inputs=False)
             # set a default update for them:
             running_mean.default_update = ((1 - self.alpha) * running_mean +
                                            self.alpha * input_mean)
-            running_var.default_update = ((1 - self.alpha) * running_var +
-                                          self.alpha * input_var)
+            running_inv_std.default_update = ((1 - self.alpha) *
+                                              running_inv_std +
+                                              self.alpha * input_inv_std)
             # and make sure they end up in the graph without participating in
             # the computation (this way their default_update will be collected
             # and applied, but the computation will be optimized away):
             mean += 0 * running_mean
-            var += 0 * running_var
+            inv_std += 0 * running_inv_std
 
         # prepare dimshuffle pattern inserting broadcastable axes as needed
         param_axes = iter(range(input.ndim - len(self.axes)))
@@ -303,13 +288,10 @@ class BatchNormLayer(Layer):
         beta = 0 if self.beta is None else self.beta.dimshuffle(pattern)
         gamma = 1 if self.gamma is None else self.gamma.dimshuffle(pattern)
         mean = mean.dimshuffle(pattern)
-        std = T.sqrt(var + self.epsilon).dimshuffle(pattern)
+        inv_std = inv_std.dimshuffle(pattern)
 
         # normalize
-        # normalized = (input - mean) * (gamma / std) + beta
-        normalized = T.nnet.batch_normalization(input, gamma=gamma, beta=beta,
-                                                mean=mean, std=std,
-                                                mode=self.mode)
+        normalized = (input - mean) * (gamma * inv_std) + beta
         return normalized
 
 
@@ -321,7 +303,6 @@ def batch_norm(layer, **kwargs):
     introducing the normalization right before the nonlinearity), remove
     the layer's bias if there is one (because it would be redundant), and add
     a :class:`BatchNormLayer` and :class:`NonlinearityLayer` on top.
-
     Parameters
     ----------
     layer : A :class:`Layer` instance
@@ -329,26 +310,20 @@ def batch_norm(layer, **kwargs):
         irreversibly modified as specified above
     **kwargs
         Any additional keyword arguments are passed on to the
-        :class:`BatchNormLayer` constructor. Especially note the `mode`
-        argument, which controls a memory usage to performance tradeoff.
-
+        :class:`BatchNormLayer` constructor.
     Returns
     -------
     BatchNormLayer or NonlinearityLayer instance
         A batch normalization layer stacked on the given modified `layer`, or
         a nonlinearity layer stacked on top of both if `layer` was nonlinear.
-
     Examples
     --------
     Just wrap any layer into a :func:`batch_norm` call on creating it:
-
     >>> from lasagne.layers import InputLayer, DenseLayer, batch_norm
     >>> from lasagne.nonlinearities import tanh
     >>> l1 = InputLayer((64, 768))
     >>> l2 = batch_norm(DenseLayer(l1, num_units=500, nonlinearity=tanh))
-
     This introduces batch normalization right before its nonlinearity:
-
     >>> from lasagne.layers import get_all_layers
     >>> [l.__class__.__name__ for l in get_all_layers(l2)]
     ['InputLayer', 'DenseLayer', 'BatchNormLayer', 'NonlinearityLayer']
@@ -356,11 +331,11 @@ def batch_norm(layer, **kwargs):
     nonlinearity = getattr(layer, 'nonlinearity', None)
     if nonlinearity is not None:
         layer.nonlinearity = nonlinearities.identity
-    if hasattr(layer, 'b'):
+    if hasattr(layer, 'b') and layer.b is not None:
         del layer.params[layer.b]
         layer.b = None
     layer = BatchNormLayer(layer, **kwargs)
     if nonlinearity is not None:
-        from lasagne.layers import NonlinearityLayer
+        from .special import NonlinearityLayer
         layer = NonlinearityLayer(layer, nonlinearity)
     return layer
