@@ -287,6 +287,23 @@ class BaseConvLayer(Layer):
                                   "convolve() method. You will want to "
                                   "use a subclass such as Conv2DLayer.")
 
+    def get_config(self):
+        config = super(BaseConvLayer, self).get_config()
+        config['W'] = self.W.shape.eval().tolist()
+        if self.b is None:
+            config['b'] = None
+        else:
+            config['b'] = self.b.shape.eval().tolist()
+        config['n'] = self.n
+        config['nonlinearity'] = self.nonlinearity.__name__
+        config['num_filters'] = self.num_filters
+        config['filter_size'] = self.filter_size
+        config['stride'] = self.stride
+        config['pad'] = self.pad
+        config['untie_biases'] = self.untie_biases
+        config['flip_filters'] = self.flip_filters
+        return config
+
 
 class Conv1DLayer(BaseConvLayer):
     """

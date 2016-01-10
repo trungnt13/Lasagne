@@ -277,6 +277,11 @@ class DimshuffleLayer(Layer):
     def get_output_for(self, input, **kwargs):
         return input.dimshuffle(self.pattern)
 
+    def get_config(self):
+        config = super(DimshuffleLayer, self).get_config()
+        config['pattern'] = self.pattern
+        return config
+
 dimshuffle = DimshuffleLayer  # shortcut
 
 

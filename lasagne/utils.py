@@ -409,3 +409,45 @@ def unroll_scan(fn, sequences, outputs_info, non_sequences, n_steps,
             output_scan.append(T.stack(*l))
 
         return output_scan
+
+def print_network(l, verbose=1):
+    """
+    Parameters
+    ----------
+    l : lasagne.layers.InputLayer
+        the network
+
+    verbose : int
+        <= 0: layer type, name, input and output
+        =  1: include weights and bias and activation type
+        >= 2: all configuration of layer
+    """
+    from layers.helper import get_all_layers
+    tags = ['class', 'name', 'input_shape', 'output_shape']
+    tags1 = ['W', 'nonlinearity']
+    tags2 = ['']
+
+    # ====== all layers ====== #
+    layers = get_all_layers(l)
+
+    # ====== print ====== #
+    for i, l in enumerate(layers):
+        config = l.get_config()
+        print('%.2d: %-19sname:%-8sin:%-26sout:%s' %
+            (i + 1, config['class'], config['name'],
+                config['input_shape'], config['output_shape']))
+        for k, v in config.iteritems():
+            # level 0
+            if k in tags: continue
+            show = False
+            # level 1
+            if verbose >= 1:
+                if k == 'b': show = True
+                else:
+                    for t in tags1:
+                        if t in k: show = True
+            # level 2
+            if verbose >= 2 and not show:
+                for t in tags2:
+                    if t in k: show = True
+            if show: print('  - %s:%s' % (k, v))

@@ -221,16 +221,18 @@ class Layer(object):
         return param
 
     def get_config(self):
-        config = {'class': self.__class__.__name__}
-        if hasattr(self, 'input_shape'):
-            config['input_shape'] = self.input_shape
-        else:
-            config['input_shape'] = None
-        config['output_shape'] = self.output_shape
+        config = OrderedDict({'class': self.__class__.__name__})
         if hasattr(self, 'name'):
             config['name'] = str(self.name)
         else:
             config['name'] = ''
+        if hasattr(self, 'input_shape'):
+            config['input_shape'] = self.input_shape
+        elif hasattr(self, 'input_shapes'):
+            config['input_shape'] = self.input_shapes
+        else:
+            config['input_shape'] = None
+        config['output_shape'] = self.output_shape
         return config
 
 class MergeLayer(Layer):

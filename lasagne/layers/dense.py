@@ -96,7 +96,7 @@ class DenseLayer(Layer):
         config['num_units'] = self.num_units
         config['W'] = self.W.shape.eval().tolist()
         if self.b is None:
-            config['b'] = 'None'
+            config['b'] = None
         else:
             config['b'] = self.b.shape.eval().tolist()
         config['nonlinearity'] = self.nonlinearity.__name__
@@ -211,7 +211,7 @@ class NINLayer(Layer):
         config['untie_biases'] = self.untie_biases
         config['W'] = self.W.shape.eval().tolist()
         if self.b is None:
-            config['b'] = 'None'
+            config['b'] = None
         else:
             config['b'] = self.b.shape.eval().tolist()
         config['nonlinearity'] = self.nonlinearity.__name__

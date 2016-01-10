@@ -298,11 +298,11 @@ class BatchNormLayer(Layer):
 def batch_norm(layer, **kwargs):
     """
     Apply batch normalization to an existing layer. This is a convenience
-    function modifying an existing layer to include batch normalization: It
-    will steal the layer's nonlinearity if there is one (effectively
-    introducing the normalization right before the nonlinearity), remove
-    the layer's bias if there is one (because it would be redundant), and add
-    a :class:`BatchNormLayer` and :class:`NonlinearityLayer` on top.
+    function modifying an existing layer to include batch normalization:
+     - It will steal the layer's nonlinearity if there is one (effectively
+    introducing the normalization right before the nonlinearity),
+     - Remove the layer's bias if there is one (because it would be redundant),
+     and add a :class:`BatchNormLayer` and :class:`NonlinearityLayer` on top.
     Parameters
     ----------
     layer : A :class:`Layer` instance

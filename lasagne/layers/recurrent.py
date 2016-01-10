@@ -608,7 +608,7 @@ class RecurrentLayer(CustomRecurrentLayer):
         self.W_in_to_hid = in_to_hid.W
         self.W_hid_to_hid = hid_to_hid.W
         self.b = in_to_hid.b
-
+        self.num_units = num_units
         # Just use the CustomRecurrentLayer with the DenseLayers we created
         super(RecurrentLayer, self).__init__(
             incoming, in_to_hid, hid_to_hid, nonlinearity=nonlinearity,
@@ -618,6 +618,26 @@ class RecurrentLayer(CustomRecurrentLayer):
             precompute_input=precompute_input, mask_input=mask_input,
             only_return_final=only_return_final, **kwargs)
 
+    def get_config(self):
+        config = super(RecurrentLayer, self).get_config()
+        # params
+        config['W_in_to_hid'] = self.W_in_to_hid.shape.eval().tolist()
+        config['W_hid_to_hid'] = self.W_hid_to_hid.shape.eval().tolist()
+        if self.b is not None:
+            config['b'] = self.b.shape.eval().tolist()
+        else:
+            config['b'] = None
+
+        config['num_units'] = self.num_units
+        config['nonlinearity'] = self.nonlinearity.__name__
+        config['backwards'] = self.backwards
+        config['learn_init'] = self.learn_init
+        config['gradient_steps'] = -self.gradient_steps
+        config['grad_clipping'] = self.grad_clipping
+        config['unroll_scan'] = self.unroll_scan
+        config['precompute_input'] = self.precompute_input
+        config['only_return_final'] = self.only_return_final
+        return config
 
 class Gate(object):
     """
@@ -1113,6 +1133,47 @@ class LSTMLayer(MergeLayer):
 
         return hid_out
 
+    def get_config(self):
+        config = super(LSTMLayer, self).get_config()
+
+        # gates
+        if self.peepholes:
+            config['W_cell_to_ingate'] = self.W_cell_to_ingate.shape.eval().tolist()
+            config['W_cell_to_forgetgate'] = self.W_cell_to_forgetgate.shape.eval().tolist()
+            config['W_cell_to_outgate'] = self.W_cell_to_outgate.shape.eval().tolist()
+
+        config['W_in_to_ingate'] = self.W_in_to_ingate.shape.eval().tolist()
+        config['W_hid_to_ingate'] = self.W_hid_to_ingate.shape.eval().tolist()
+        config['b_ingate'] = self.b_ingate.shape.eval().tolist()
+        config['nonlinearity_ingate'] = self.nonlinearity_ingate.__name__
+
+        config['W_in_to_forgetgate'] = self.W_in_to_forgetgate.shape.eval().tolist()
+        config['W_hid_to_forgetgate'] = self.W_hid_to_forgetgate.shape.eval().tolist()
+        config['b_forgetgate'] = self.b_forgetgate.shape.eval().tolist()
+        config['nonlinearity_forgetgate'] = self.nonlinearity_forgetgate.__name__
+
+        config['W_in_to_cell'] = self.W_in_to_cell.shape.eval().tolist()
+        config['W_hid_to_cell'] = self.W_hid_to_cell.shape.eval().tolist()
+        config['b_cell'] = self.b_cell.shape.eval().tolist()
+        config['nonlinearity_cell'] = self.nonlinearity_cell.__name__
+
+        config['W_in_to_outgate'] = self.W_in_to_outgate.shape.eval().tolist()
+        config['W_hid_to_outgate'] = self.W_hid_to_outgate.shape.eval().tolist()
+        config['b_outgate'] = self.b_outgate.shape.eval().tolist()
+        config['nonlinearity_outgate'] = self.nonlinearity_outgate.__name__
+
+        # others
+        config['num_units'] = self.num_units
+        config['nonlinearity'] = self.nonlinearity.__name__
+        config['peepholes'] = self.peepholes
+        config['backwards'] = self.backwards
+        config['learn_init'] = self.learn_init
+        config['gradient_steps'] = -self.gradient_steps
+        config['grad_clipping'] = self.grad_clipping
+        config['unroll_scan'] = self.unroll_scan
+        config['precompute_input'] = self.precompute_input
+        config['only_return_final'] = self.only_return_final
+        return config
 
 class GRULayer(MergeLayer):
     r"""
@@ -1478,3 +1539,33 @@ class GRULayer(MergeLayer):
                 hid_out = hid_out[:, ::-1]
 
         return hid_out
+
+    def get_config(self):
+        config = super(GRULayer, self).get_config()
+
+        # gates
+        config['W_in_to_updategate'] = self.W_in_to_updategate.shape.eval().tolist()
+        config['W_hid_to_updategate'] = self.W_hid_to_updategate.shape.eval().tolist()
+        config['b_updategate'] = self.b_updategate.shape.eval().tolist()
+        config['nonlinearity_updategate'] = self.nonlinearity_updategate.__name__
+
+        config['W_in_to_resetgate'] = self.W_in_to_resetgate.shape.eval().tolist()
+        config['W_hid_to_resetgate'] = self.W_hid_to_resetgate.shape.eval().tolist()
+        config['b_resetgate'] = self.b_resetgate.shape.eval().tolist()
+        config['nonlinearity_resetgate'] = self.nonlinearity_resetgate.__name__
+
+        config['W_in_to_hidden_update'] = self.W_in_to_hidden_update.shape.eval().tolist()
+        config['W_hid_to_hidden_update'] = self.W_hid_to_hidden_update.shape.eval().tolist()
+        config['b_hidden_update'] = self.b_hidden_update.shape.eval().tolist()
+        config['nonlinearity_hid'] = self.nonlinearity_hid.__name__
+
+        # others
+        config['num_units'] = self.num_units
+        config['backwards'] = self.backwards
+        config['learn_init'] = self.learn_init
+        config['gradient_steps'] = -self.gradient_steps
+        config['grad_clipping'] = self.grad_clipping
+        config['unroll_scan'] = self.unroll_scan
+        config['precompute_input'] = self.precompute_input
+        config['only_return_final'] = self.only_return_final
+        return config
