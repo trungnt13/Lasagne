@@ -61,8 +61,8 @@ class DropoutLayer(Layer):
         self._srng = RandomStreams(get_rng().randint(1, 2147462579))
         if p is not None:
             if 'SharedVariable' not in str(type(p)):
-                p = theano.shared(p, name='p')
-            p = p.astype(theano.config.floatX)
+                p = theano.shared(np.cast[theano.config.floatX](p),
+                                  name='p')
         self.p = p
         self.rescale = rescale
 
@@ -125,8 +125,8 @@ class GaussianNoiseLayer(Layer):
         self._srng = RandomStreams(get_rng().randint(1, 2147462579))
         if sigma is not None:
             if 'SharedVariable' not in str(type(sigma)):
-                sigma = theano.shared(sigma, name='p')
-            sigma = sigma.astype(theano.config.floatX)
+                sigma = theano.shared(np.cast[theano.config.floatX](sigma),
+                                      name='p')
         self.sigma = sigma
 
     def get_output_for(self, input, deterministic=False, **kwargs):
