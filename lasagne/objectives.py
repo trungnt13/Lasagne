@@ -91,7 +91,7 @@ __all__ = [
 ]
 
 
-def binary_crossentropy(predictions, targets):
+def binary_crossentropy(predictions, targets, epsilon=10e-8):
     """Computes the binary cross-entropy between predictions and targets.
 
     .. math:: L = -t \\log(p) - (1 - t) \\log(1 - p)
@@ -113,6 +113,7 @@ def binary_crossentropy(predictions, targets):
     This is the loss function of choice for binary classification problems
     and sigmoid output units.
     """
+    predictions = theano.tensor.clip(predictions, epsilon, 1.0 - epsilon)
     return theano.tensor.nnet.binary_crossentropy(predictions, targets)
 
 
