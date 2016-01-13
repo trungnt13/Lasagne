@@ -16,6 +16,7 @@
     layers/noise
     layers/shape
     layers/merge
+    layers/normalization
     layers/embedding
     layers/special
     layers/corrmm
@@ -137,6 +138,16 @@
     ElemwiseSumLayer
 
 
+.. rubric:: :doc:`layers/normalization`
+
+.. autosummary::
+    :nosignatures:
+
+    LocalResponseNormalization2DLayer
+    BatchNormLayer
+    batch_norm
+
+
 .. rubric:: :doc:`layers/embedding`
 
 .. autosummary::
@@ -192,4 +203,6 @@
     dnn.Conv3DDNNLayer
     dnn.MaxPool2DDNNLayer
     dnn.Pool2DDNNLayer
+    dnn.MaxPool3DDNNLayer
+    dnn.Pool3DDNNLayer
 

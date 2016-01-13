@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
 """
-
-This file contains code from pylearn2, which is covered by the following
-license:
+The :class:`LocalResponseNormalization2DLayer
+<lasagne.layers.LocalResponseNormalization2DLayer>` implementation contains
+code from `pylearn2 <http://github.com/lisa-lab/pylearn2>`_, which is covered
+by the following license:
 
 
 Copyright (c) 2011--2014, Université de Montréal
@@ -38,9 +39,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import theano
 import theano.tensor as T
 
+from .. import init
+from .. import nonlinearities
+
 from .base import Layer
 from .. import nonlinearities
 from .. import init
+
 
 __all__ = [
     "LocalResponseNormalization2DLayer",
@@ -57,29 +62,35 @@ class LocalResponseNormalization2DLayer(Layer):
     Aggregation is purely across channels, not within channels,
     and performed "pixelwise".
 
-    Input order is assumed to be `BC01`.
-
-    If the value of the ith channel is :math:`x_i`, the output is
+    If the value of the :math:`i` th channel is :math:`x_i`, the output is
 
     .. math::
-
-        x_i = \frac{x_i}{ (k + ( \alpha \sum_j x_j^2 ))^\beta }
+        x_i = \\frac{x_i}{ (k + ( \\alpha \\sum_j x_j^2 ))^\\beta }
 
     where the summation is performed over this position on :math:`n`
     neighboring channels.
 
-    This code is adapted from pylearn2.
+    Parameters
+    ----------
+    incoming : a :class:`Layer` instance or a tuple
+        The layer feeding into this layer, or the expected input shape. Must
+        follow *BC01* layout, i.e., ``(batchsize, channels, rows, columns)``.
+    alpha : float scalar
+        coefficient, see equation above
+    k : float scalar
+        offset, see equation above
+    beta : float scalar
+        exponent, see equation above
+    n : int
+        number of adjacent channels to normalize over, must be odd
+
+    Notes
+    -----
+    This code is adapted from pylearn2. See the module docstring for license
+    information.
     """
 
     def __init__(self, incoming, alpha=1e-4, k=2, beta=0.75, n=5, **kwargs):
-        """
-        :parameters:
-            - incoming: input layer or shape
-            - alpha: see equation above
-            - k: see equation above
-            - beta: see equation above
-            - n: number of adjacent channels to normalize over.
-        """
         super(LocalResponseNormalization2DLayer, self).__init__(incoming,
                                                                 **kwargs)
         self.alpha = alpha
@@ -108,20 +119,25 @@ class LocalResponseNormalization2DLayer(Layer):
         scale = scale ** self.beta
         return input / scale
 
-class BatchNormLayer(Layer):
 
+class BatchNormLayer(Layer):
     """
     lasagne.layers.BatchNormLayer(incoming, axes='auto', epsilon=1e-4,
     alpha=0.1, mode='low_mem',
     beta=lasagne.init.Constant(0), gamma=lasagne.init.Constant(1),
     mean=lasagne.init.Constant(0), inv_std=lasagne.init.Constant(1), **kwargs)
+
     Batch Normalization
+
     This layer implements batch normalization of its inputs, following [1]_:
+
     .. math::
         y = \\frac{x - \\mu}{\\sqrt{\\sigma^2 + \\epsilon}} \\gamma + \\beta
+
     That is, the input is normalized to zero mean and unit variance, and then
     linearly transformed. The crucial part is that the mean and variance are
     computed across the batch dimension, i.e., over examples, not per example.
+
     During training, :math:`\\mu` and :math:`\\sigma^2` are defined to be the
     mean and variance of the current input mini-batch :math:`x`, and during
     testing, they are replaced with average statistics over the training
@@ -132,6 +148,7 @@ class BatchNormLayer(Layer):
     By default, this layer learns the average statistics as exponential moving
     averages computed during training, so it can be plugged into an existing
     network without any changes of the training procedure (see Notes).
+
     Parameters
     ----------
     incoming : a :class:`Layer` instance or a tuple
@@ -170,29 +187,35 @@ class BatchNormLayer(Layer):
     **kwargs
         Any additional keyword arguments are passed to the :class:`Layer`
         superclass.
+
     Notes
     -----
     This layer should be inserted between a linear transformation (such as a
     :class:`DenseLayer`, or :class:`Conv2DLayer`) and its nonlinearity. The
     convenience function :func:`batch_norm` modifies an existing layer to
     insert batch normalization in front of its nonlinearity.
+
     The behavior can be controlled by passing keyword arguments to
     :func:`lasagne.layers.get_output()` when building the output expression
     of any network containing this layer.
+
     During training, [1]_ normalize each input mini-batch by its statistics
     and update an exponential moving average of the statistics to be used for
     validation. This can be achieved by passing ``deterministic=False``.
     For validation, [1]_ normalize each input mini-batch by the stored
     statistics. This can be achieved by passing ``deterministic=True``.
+
     For more fine-grained control, ``batch_norm_update_averages`` can be passed
     to update the exponential moving averages (``True``) or not (``False``),
     and ``batch_norm_use_averages`` can be passed to use the exponential moving
     averages for normalization (``True``) or normalize each mini-batch by its
     own statistics (``False``). These settings override ``deterministic``.
+
     Note that for testing a model after training, [1]_ replace the stored
     exponential moving average statistics by fixing all network weights and
     re-computing average statistics over the training data in a layerwise
     fashion. This is not part of the layer implementation.
+
     In case you set `axes` to not include the batch dimension (the first axis,
     usually), normalization is done per example, not across examples. This does
     not require any averages, so you can pass ``batch_norm_update_averages``
@@ -200,13 +223,17 @@ class BatchNormLayer(Layer):
     See also
     --------
     batch_norm : Convenience function to apply batch normalization to a layer
+
+    See also
+    --------
+    batch_norm : Convenience function to apply batch normalization to a layer
+
     References
     ----------
     .. [1] Ioffe, Sergey and Szegedy, Christian (2015):
            Batch Normalization: Accelerating Deep Network Training by Reducing
            Internal Covariate Shift. http://arxiv.org/abs/1502.03167.
     """
-
     def __init__(self, incoming, axes='auto', epsilon=1e-4, alpha=0.1,
                  mode='low_mem', beta=init.Constant(0), gamma=init.Constant(1),
                  mean=init.Constant(0), inv_std=init.Constant(1), **kwargs):
@@ -298,11 +325,12 @@ class BatchNormLayer(Layer):
 def batch_norm(layer, **kwargs):
     """
     Apply batch normalization to an existing layer. This is a convenience
-    function modifying an existing layer to include batch normalization:
-     - It will steal the layer's nonlinearity if there is one (effectively
-    introducing the normalization right before the nonlinearity),
-     - Remove the layer's bias if there is one (because it would be redundant),
-     and add a :class:`BatchNormLayer` and :class:`NonlinearityLayer` on top.
+    function modifying an existing layer to include batch normalization: It
+    will steal the layer's nonlinearity if there is one (effectively
+    introducing the normalization right before the nonlinearity), remove
+    the layer's bias if there is one (because it would be redundant), and add
+    a :class:`BatchNormLayer` and :class:`NonlinearityLayer` on top.
+
     Parameters
     ----------
     layer : A :class:`Layer` instance
@@ -311,19 +339,24 @@ def batch_norm(layer, **kwargs):
     **kwargs
         Any additional keyword arguments are passed on to the
         :class:`BatchNormLayer` constructor.
+
     Returns
     -------
     BatchNormLayer or NonlinearityLayer instance
         A batch normalization layer stacked on the given modified `layer`, or
         a nonlinearity layer stacked on top of both if `layer` was nonlinear.
+
     Examples
     --------
     Just wrap any layer into a :func:`batch_norm` call on creating it:
+
     >>> from lasagne.layers import InputLayer, DenseLayer, batch_norm
     >>> from lasagne.nonlinearities import tanh
     >>> l1 = InputLayer((64, 768))
     >>> l2 = batch_norm(DenseLayer(l1, num_units=500, nonlinearity=tanh))
+
     This introduces batch normalization right before its nonlinearity:
+
     >>> from lasagne.layers import get_all_layers
     >>> [l.__class__.__name__ for l in get_all_layers(l2)]
     ['InputLayer', 'DenseLayer', 'BatchNormLayer', 'NonlinearityLayer']
