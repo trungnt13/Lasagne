@@ -365,3 +365,15 @@ class Orthogonal(Initializer):
         q = u if u.shape == flat_shape else v
         q = q.reshape(shape)
         return floatX(self.gain * q)
+
+class Dummy(Initializer):
+    """Just for debug the parameters, init in increasing value 1,2,3,4,...
+    Mostly for initialization debug purpose
+    """
+    def __init__(self):
+        pass
+
+    def sample(self, shape):
+        size = np.prod(shape)
+        init = np.arange(size)
+        return floatX(init.reshape(shape))

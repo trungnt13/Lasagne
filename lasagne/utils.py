@@ -420,9 +420,10 @@ def print_network(l, verbose=1):
         the network
 
     verbose : int
-        <= 0: layer type, name, input and output
-        =  1: include weights and bias and activation type
-        >= 2: all configuration of layer
+        if verbose <= 0: layer type, name, input and output
+        if verbose =  1: include weights and bias and activation type
+        if verbose >= 2: all configuration of layer
+
     """
     from layers.helper import get_all_layers
     tags = ['class', 'name', 'input_shape', 'output_shape']
