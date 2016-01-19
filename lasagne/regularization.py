@@ -48,9 +48,7 @@ Examples
 >>> l1_penalty = regularize_layer_params(layer2, l1) * 1e-4
 >>> loss = loss + l2_penalty + l1_penalty
 """
-import theano
 import theano.tensor as T
-import numpy as np
 from .layers import Layer, get_all_params
 
 
@@ -189,61 +187,3 @@ def regularize_network_params(layer, penalty,
         a scalar expression for the cost
     """
     return apply_penalty(get_all_params(layer, **tags), penalty, **kwargs)
-
-class Regularizer(object):
-
-    def __init__(self):
-        super(Regularizer, self).__init__()
-        self.tags = {'regularizable': True}
-
-    def set_tags(self, tags={'regularizable': True}):
-        self.tags = tags
-        return self
-
-    def apply_network(self, network):
-        return self.apply_tensors(get_all_params(network, **self.tags))
-
-    def apply_weighted(self, layers):
-        return sum(coeff * self.apply_tensors(layer.get_params(**self.tags))
-                   for layer, coeff in layers.items())
-
-    def apply_layers(self, layer):
-        layers = [layer, ] if isinstance(layer, Layer) else layer
-        all_params = []
-        for layer in layers:
-            all_params += layer.get_params(**self.tags)
-        return self.apply_tensors(all_params)
-
-    def apply_tensors(self, tensor_or_tensors):
-        try:
-            return sum(self(x) for x in tensor_or_tensors)
-        except (TypeError, ValueError):
-            return self(tensor_or_tensors)
-
-    def __call__(self, x):
-        raise NotImplementedError()
-
-class L1(Regularizer):
-    def __init__(self, l1=0.):
-        super(L1, self).__init__()
-        self.l1 = theano.shared(np.cast[theano.config.floatX](l1), name='l1')
-
-    def __call__(self, x):
-        return self.l1 * T.sum(abs(x))
-
-class L2(Regularizer):
-    def __init__(self, l2=0.):
-        super(L2, self).__init__()
-        self.l2 = theano.shared(np.cast[theano.config.floatX](l2), name='l2')
-
-    def __call__(self, x):
-        return self.l2 * T.sum(x**2)
-
-class L1L2(Regularizer):
-    def __init__(self, l1=0., l2=0.):
-        super(L1L2, self).__init__()
-        self.l1 = theano.shared(np.cast[theano.config.floatX](l1), name='l1')
-        self.l2 = theano.shared(np.cast[theano.config.floatX](l2), name='l2')
-
-    def __call__(self, x):
-        return self.l1 * T.sum(abs(x)) + self.l2 * T.sum(x**2)
