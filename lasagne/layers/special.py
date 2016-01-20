@@ -19,6 +19,7 @@ __all__ = [
     "prelu",
     "RandomizedRectifierLayer",
     "rrelu",
+    "Antirectifier"
 ]
 
 
