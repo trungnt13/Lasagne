@@ -436,6 +436,11 @@ class ExpressionMergeLayer(MergeLayer):
         assumed to be the same as the input shape. If 'auto', an attempt will
         be made to automatically infer the correct output shape.
 
+    Notes
+    -----
+    if ``output_shape=None``, this layer chooses first input_shape as its
+    output_shape
+
     Example
     --------
     >>> from lasagne.layers import InputLayer, DimshuffleLayer, ExpressionMergeLayer
