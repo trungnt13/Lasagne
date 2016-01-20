@@ -13,6 +13,7 @@ __all__ = [
     "concat",
     "ElemwiseMergeLayer",
     "ElemwiseSumLayer",
+    "ExpressionMergeLayer",
     "ShortcutLayer"
 ]
 
@@ -413,60 +414,67 @@ class ElemwiseSumLayer(ElemwiseMergeLayer):
 class ExpressionMergeLayer(MergeLayer):
 
     """
-    This layer performs an elementwise merge of its input layers.
-    It requires all input layers to have the same output shape.
+    This layer performs an custom expressions on list of inputs to merge them.
+    This layer is different from ElemwiseMergeLayer by not required all
+    input_shapes are equal
 
     Parameters
     ----------
     incomings : a list of :class:`Layer` instances or tuples
-        the layers feeding into this layer, or expected input shapes,
-        with all incoming shapes being equal
+        the layers feeding into this layer, or expected input shapes
 
     merge_function : callable
         the merge function to use. Should take two arguments and return the
         updated value. Some possible merge functions are ``theano.tensor``:
         ``mul``, ``add``, ``maximum`` and ``minimum``.
 
-    cropping : None or [crop]
-        Cropping for each input axis. Cropping is described in the docstring
-        for :func:`autocrop`
+    output_shape : None, callable, tuple, or 'auto'
+        Specifies the output shape of this layer. If a tuple, this fixes the
+        output shape for any input shape (the tuple can contain None if some
+        dimensions may vary). If a callable, it should return the calculated
+        output shape given the input shape. If None, the output shape is
+        assumed to be the same as the input shape. If 'auto', an attempt will
+        be made to automatically infer the correct output shape.
 
-    See Also
+    Example
     --------
-    ElemwiseSumLayer : Shortcut for sum layer.
+    >>> from lasagne.layers import InputLayer, DimshuffleLayer, ExpressionMergeLayer
+    >>> l_in = lasagne.layers.InputLayer(shape=(None, 500, 120))
+    >>> l_mask = lasagne.layers.InputLayer(shape=(None, 500))
+    >>> l_dim = lasagne.layers.DimshuffleLayer(l_mask, pattern=(0, 1, 'x'))
+    >>> l_out = lasagne.layers.ExpressionMergeLayer(
+                                (l_in, l_dim), tensor.mul, output_shape='auto')
+    (None, 500, 120)
     """
 
-    def __init__(self, incomings, merge_function, cropping=None, **kwargs):
-        super(ElemwiseMergeLayer, self).__init__(incomings, **kwargs)
+    def __init__(self, incomings, merge_function, output_shape=None, **kwargs):
+        super(ExpressionMergeLayer, self).__init__(incomings, **kwargs)
+        if output_shape is None:
+            self._output_shape = None
+        elif output_shape == 'auto':
+            self._output_shape = 'auto'
+        elif hasattr(output_shape, '__call__'):
+            self.get_output_shape_for = output_shape
+        else:
+            self._output_shape = tuple(output_shape)
+
         self.merge_function = merge_function
-        self.cropping = cropping
 
     def get_output_shape_for(self, input_shapes):
-        input_shapes = autocrop_array_shapes(input_shapes, self.cropping)
-        # Infer the output shape by grabbing, for each axis, the first
-        # input size that is not `None` (if there is any)
-        output_shape = tuple(next((s for s in sizes if s is not None), None)
-                             for sizes in zip(*input_shapes))
-
-        def match(shape1, shape2):
-            return (len(shape1) == len(shape2) and
-                    all(s1 is None or s2 is None or s1 == s2
-                        for s1, s2 in zip(shape1, shape2)))
-
-        # Check for compatibility with inferred output shape
-        if not all(match(shape, output_shape) for shape in input_shapes):
-            raise ValueError("Mismatch: not all input shapes are the same")
-        return output_shape
+        if self._output_shape is None:
+            return input_shapes[0]
+        elif self._output_shape is 'auto':
+            input_shape = [(0 if s is None else s for s in ishape)
+                           for ishape in input_shapes]
+            Xs = [T.alloc(0, *ishape) for ishape in input_shape]
+            output_shape = self.merge_function(*Xs).shape.eval()
+            output_shape = tuple(s if s else None for s in output_shape)
+            return output_shape
+        else:
+            return self._output_shape
 
     def get_output_for(self, inputs, **kwargs):
-        inputs = autocrop(inputs, self.cropping)
-        output = None
-        for input in inputs:
-            if output is not None:
-                output = self.merge_function(output, input)
-            else:
-                output = input
-        return output
+        return self.merge_function(*inputs)
 
 class ShortcutLayer(MergeLayer):
 
