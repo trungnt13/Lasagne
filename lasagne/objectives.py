@@ -76,7 +76,7 @@ This gives a loss expression good for monitoring validation error.
 """
 
 import theano.tensor.nnet
-
+from lasagne.ext import ctc_cost
 from lasagne.layers import get_output
 
 __all__ = [
@@ -87,7 +87,9 @@ __all__ = [
     "binary_hinge_loss",
     "multiclass_hinge_loss",
     "binary_accuracy",
-    "categorical_accuracy"
+    "categorical_accuracy",
+    "ctc_cost_train",
+    "ctc_cost_monitor"
 ]
 
 
@@ -381,3 +383,85 @@ def categorical_accuracy(predictions, targets, top_k=1):
                   [slice(-top_k, None)]]
         targets = theano.tensor.shape_padaxis(targets, axis=-1)
         return theano.tensor.any(theano.tensor.eq(top, targets), axis=-1)
+
+def ctc_cost_train(y, y_pred, y_mask=None, y_pred_mask=None, epsilon=10e-8):
+    """
+    Training objective.
+    Computes the marginal label probabilities and returns the
+    cross entropy between this distribution and y_hat, ignoring the
+    dependence of the two.
+    This cost should have the same gradient but it should be more
+    numerically stable.
+
+    Here's how it works:
+
+    Say delta_y is the gradient we want theano to return with respect to
+    the input y and let's assume both variables are vectors. By simply
+    computing dot(delta_y, y), we obtain a cost with gradient delta_y.
+
+    Parameters
+    ----------
+    y : matrix (batch_size, seq_length)
+        the target label sequences
+    y_hat : tensor3 (batch_size, in_seq_length, probabily_distribution)
+        class probabily distribution sequences
+    y_mask : matrix (batch_size, seq_length)
+        indicates which values of y to use
+    y_hat_mask : matrix (batch_size, in_seq_length)
+        indicates the lenghts of the sequences in y_hat
+
+    """
+    y_pred = theano.tensor.clip(y_pred, epsilon, 1.0 - epsilon)
+
+    # ====== Convert to shape of ctc implementation ====== #
+    y_pred = y_pred.dimshuffle(1, 0, 2)
+    y = y.dimshuffle(1, 0)
+
+    # ====== Check mask ====== #
+    y_mask = theano.tensor.ones(y.shape, dtype=theano.config.floatX) \
+        if y_mask is None else y_mask.dimshuffle(1, 0)
+    y_pred_mask = theano.tensor.ones(y_pred.shape[:-1], dtype = theano.config.floatX) \
+        if y_pred_mask is None else y_pred_mask.dimshuffle(1, 0)
+
+    return ctc_cost.pseudo_cost(y, y_pred, y_mask, y_pred_mask,
+        skip_softmax=False)
+
+def ctc_cost_monitor(y, y_pred, y_mask=None, y_pred_mask=None, epsilon=10e-8):
+    """
+    Training objective.
+    Computes the CTC cost using just the forward computations.
+    The difference between this function and the vanilla 'cost' function
+    is that this function adds blanks first.
+
+    Parameters
+    ----------
+    y : matrix (batch_size, seq_length)
+        the target label sequences
+    y_hat : tensor3 (batch_size, in_seq_length, probabily_distribution)
+        class probabily distribution sequences
+    y_mask : matrix (batch_size, seq_length)
+        indicates which values of y to use
+    y_hat_mask : matrix (batch_size, in_seq_length)
+        indicates the lenghts of the sequences in y_hat
+    log_scale : bool
+        uses log domain computations if True
+
+    Notes
+    -----
+    DO not try to compute the gradient of this version of the cost!
+
+    """
+    y_pred = theano.tensor.clip(y_pred, epsilon, 1.0 - epsilon)
+
+    # ====== Convert to shape of ctc implementation ====== #
+    y_pred = y_pred.dimshuffle(1, 0, 2)
+    y = y.dimshuffle(1, 0)
+
+    # ====== Check mask ====== #
+    y_mask = theano.tensor.ones(y.shape, dtype=theano.config.floatX) \
+        if y_mask is None else y_mask.dimshuffle(1, 0)
+    y_pred_mask = theano.tensor.ones(y_pred.shape[:-1], dtype = theano.config.floatX) \
+        if y_pred_mask is None else y_pred_mask.dimshuffle(1, 0)
+
+    return ctc_cost.cost(y, y_pred, y_mask, y_pred_mask,
+        log_scale=True)
