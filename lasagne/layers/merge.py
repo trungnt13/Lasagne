@@ -536,9 +536,12 @@ class ShortcutLayer(MergeLayer):
     """
 
     def __init__(self, incomings, force_projection=False,
-        W=init.GlorotUniform(), nonlinearity=nonlinearities.identity,
+        W=init.GlorotUniform(), inner_nonlinearity=nonlinearities.identity,
+        nonlinearity=nonlinearities.identity,
         **kwargs):
         super(ShortcutLayer, self).__init__(incomings, **kwargs)
+        self.inner_nonlinearity = (nonlinearities.identity if inner_nonlinearity is None
+                             else inner_nonlinearity)
         self.nonlinearity = (nonlinearities.identity if nonlinearity is None
                              else nonlinearity)
         self.W = []
@@ -564,8 +567,8 @@ class ShortcutLayer(MergeLayer):
                 if x.ndim > 2: # flatten > 2D input
                     x = x.flatten(2)
                 x = T.dot(x, W)
-            x = self.nonlinearity(x)
+            x = self.inner_nonlinearity(x)
             if ndim > 2: # reshape for > 2D
                 x = x.reshape(activation.shape)
             activation += x
-        return activation
+        return self.nonlinearity(activation)

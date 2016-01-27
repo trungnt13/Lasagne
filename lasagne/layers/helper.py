@@ -491,24 +491,11 @@ def find_layers(layer, name=None, types=None):
     return : list
         list of found layer (no duplicated)
 
-    Examples
-    --------
-    >>> from lasagne.layers import InputLayer, DenseLayer, ElemwiseSumLayer, find_layers
-    >>> l_in = InputLayer((100, 20), name='input')
-    >>> l_mask = InputLayer((100, 20), name='mask')
-    >>> l1 = DenseLayer(l_in, num_units=50, name=['pretrain','l1'])
-    >>> l2 = DenseLayer(l_mask, num_units=50, name=['pretrain','l2'])
-    >>> l_merge = ElemwiseSumLayer((l1,l2), name='pretrain')
-    >>> l_out = DenseLayer(l_merge, 10)
-    >>> find_layers(l_out, ['input','mask','pretrain'])
-    >>> # return: [l_in, l_mask, l1, l2, l_mer]
-    >>> find_layers(l_out, ['input','mask','pretrain'], types=[InputLayer, DenseLayer])
-    >>> # return: [l_in, l_mask, l1, l2]
     '''
     list_types = (tuple, list)
     # check arguments
     if name is None and types is None:
-        raise ValueError('One of [names] or [types] conditions must be specified')
+        raise ValueError('[names] or [types] conditions must be specified')
     if types is not None and type(types) not in list_types:
         types = [types]
     # init
