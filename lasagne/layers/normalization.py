@@ -43,19 +43,16 @@ from .. import init
 from .. import nonlinearities
 
 from .base import Layer
-from .. import nonlinearities
-from .. import init
 
 
 __all__ = [
     "LocalResponseNormalization2DLayer",
     "BatchNormLayer",
-    "batch_norm"
+    "batch_norm",
 ]
 
 
 class LocalResponseNormalization2DLayer(Layer):
-
     """
     Cross-channel Local Response Normalization for 2D feature maps.
 
@@ -110,12 +107,12 @@ class LocalResponseNormalization2DLayer(Layer):
         half_n = self.n // 2
         input_sqr = T.sqr(input)
         b, ch, r, c = input_shape
-        extra_channels = T.alloc(0., b, ch + 2 * half_n, r, c)
-        input_sqr = T.set_subtensor(extra_channels[:, half_n:half_n + ch, :, :],
+        extra_channels = T.alloc(0., b, ch + 2*half_n, r, c)
+        input_sqr = T.set_subtensor(extra_channels[:, half_n:half_n+ch, :, :],
                                     input_sqr)
         scale = self.k
         for i in range(self.n):
-            scale += self.alpha * input_sqr[:, i:i + ch, :, :]
+            scale += self.alpha * input_sqr[:, i:i+ch, :, :]
         scale = scale ** self.beta
         return input / scale
 
@@ -220,9 +217,6 @@ class BatchNormLayer(Layer):
     usually), normalization is done per example, not across examples. This does
     not require any averages, so you can pass ``batch_norm_update_averages``
     and ``batch_norm_use_averages`` as ``False`` in this case.
-    See also
-    --------
-    batch_norm : Convenience function to apply batch normalization to a layer
 
     See also
     --------
