@@ -92,7 +92,6 @@ __all__ = [
     "ctc_cost_monitor"
 ]
 
-
 def binary_crossentropy(predictions, targets, epsilon=10e-8):
     """Computes the binary cross-entropy between predictions and targets.
 
