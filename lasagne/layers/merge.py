@@ -14,7 +14,8 @@ __all__ = [
     "ElemwiseMergeLayer",
     "ElemwiseSumLayer",
     "ExpressionMergeLayer",
-    "ShortcutLayer"
+    "ShortcutLayer",
+    "shortcut"
 ]
 
 
