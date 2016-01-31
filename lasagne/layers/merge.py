@@ -572,3 +572,14 @@ class ShortcutLayer(MergeLayer):
                 x = x.reshape(activation.shape)
             activation += x
         return self.nonlinearity(activation)
+
+def shortcut(*layers):
+    '''
+    First layer as root
+     - Remove nonlinearity of first layer
+     - Create shortcut connection with nonlinearity of the first layer
+    '''
+    nonlinearity = getattr(layers[0], 'nonlinearity', None)
+    if nonlinearity is not None:
+        layers[0].nonlinearity = nonlinearities.identity
+    return ShortcutLayer(layers, nonlinearity=nonlinearity)

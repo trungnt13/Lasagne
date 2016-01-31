@@ -437,7 +437,7 @@ def print_network(l, verbose=1):
     for i, l in enumerate(layers):
         config = l.get_config()
         print('%.2d: %-19sname:%-8sin:%-26sout:%s' %
-            (i + 1, config['class'], config['name'],
+            (i, config['class'], config['name'],
                 config['input_shape'], config['output_shape']))
         for k, v in config.iteritems():
             # level 0
