@@ -574,6 +574,14 @@ class ShortcutLayer(MergeLayer):
             activation += x
         return self.nonlinearity(activation)
 
+    def get_config(self):
+        config = super(ShortcutLayer, self).get_config()
+        for i, w in enumerate(self.W):
+            config['W%d' % i] = w.shape.eval().tolist()
+        config['inner_nonlinearity'] = self.inner_nonlinearity.__name__
+        config['nonlinearity'] = self.nonlinearity.__name__
+        return config
+
 def shortcut(*layers):
     '''
     First layer as root
