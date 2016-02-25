@@ -164,7 +164,7 @@ def squared_error(a, b):
     Returns
     -------
     Theano tensor
-        An expression for the item-wise squared difference.
+        An expression for the element-wise squared difference.
 
     Notes
     -----
