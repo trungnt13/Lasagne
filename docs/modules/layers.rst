@@ -71,6 +71,9 @@
 
     Conv1DLayer
     Conv2DLayer
+    TransposedConv2DLayer
+    Deconv2DLayer
+    DilatedConv2DLayer
 
 
 .. rubric:: :doc:`layers/pool`
@@ -205,4 +208,5 @@
     dnn.Pool2DDNNLayer
     dnn.MaxPool3DDNNLayer
     dnn.Pool3DDNNLayer
+    dnn.SpatialPyramidPoolingDNNLayer
 
