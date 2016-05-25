@@ -190,6 +190,7 @@ def regularize_network_params(layer, penalty,
     """
     return apply_penalty(get_all_params(layer, **tags), penalty, **kwargs)
 
+
 class Regularizer(object):
 
     def __init__(self):
@@ -220,7 +221,9 @@ class Regularizer(object):
     def __call__(self, x):
         raise NotImplementedError()
 
+
 class L1(Regularizer):
+
     def __init__(self, l1=0.):
         super(L1, self).__init__()
         self.l1 = theano.shared(np.cast[theano.config.floatX](l1), name='l1')
@@ -234,7 +237,9 @@ class L1(Regularizer):
     def __call__(self, x):
         return self.l1 * l1(x)
 
+
 class L2(Regularizer):
+
     def __init__(self, l2=0.):
         super(L2, self).__init__()
         self.l2 = theano.shared(np.cast[theano.config.floatX](l2), name='l2')
@@ -248,7 +253,9 @@ class L2(Regularizer):
     def __call__(self, x):
         return self.l2 * l2(x)
 
+
 class L1L2(Regularizer):
+
     def __init__(self, l1=0., l2=0.):
         super(L1L2, self).__init__()
         self.l1 = theano.shared(np.cast[theano.config.floatX](l1), name='l1')
@@ -257,7 +264,7 @@ class L1L2(Regularizer):
     def apply_tensors(self, tensor_or_tensors):
         try:
             return self.l1 * sum(l1(x) for x in tensor_or_tensors) + \
-                   self.l2 * sum(l2(x) for x in tensor_or_tensors)
+                self.l2 * sum(l2(x) for x in tensor_or_tensors)
         except (TypeError, ValueError):
             return self(tensor_or_tensors)
 

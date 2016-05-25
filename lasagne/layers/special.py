@@ -1167,6 +1167,7 @@ def rrelu(layer, **kwargs):
         layer.nonlinearity = nonlinearities.identity
     return RandomizedRectifierLayer(layer, **kwargs)
 
+
 class Antirectifier(Layer):
 
     """
